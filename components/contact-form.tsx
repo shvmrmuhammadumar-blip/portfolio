@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { site } from "@/data/site";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Enter your name."),
@@ -31,7 +32,18 @@ export function ContactForm() {
   async function onSubmit(values: ContactValues) {
     setStatus("idle");
     try {
-      const response = await fetch("/api/contact", {
+      // Static hosting (GitHub Pages) has no server, so there is no /api/contact.
+      // Set NEXT_PUBLIC_CONTACT_ENDPOINT (Formspree etc.) to post directly to a service;
+      // without one, a static build falls back to opening the visitor's email app.
+      if (process.env.NEXT_PUBLIC_STATIC_EXPORT === "true" && !process.env.NEXT_PUBLIC_CONTACT_ENDPOINT) {
+        const subject = encodeURIComponent(`Portfolio message from ${values.name}`);
+        const body = encodeURIComponent(`${values.message}\n\n— ${values.name} (${values.email})`);
+        window.location.href = `mailto:${site.email}?subject=${subject}&body=${body}`;
+        setStatus("success");
+        reset();
+        return;
+      }
+      const response = await fetch(process.env.NEXT_PUBLIC_CONTACT_ENDPOINT ?? "/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
